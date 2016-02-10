@@ -1,0 +1,48 @@
+#!/usr/bin/env ruby
+
+require 'open3'
+
+MRUBY_REPO = "https://github.com/mruby/mruby.git"
+SRC_LOCATION = 'mruby-src'
+
+Dir.mkdir("./#{SRC_LOCATION}") unless File.exist?(SRC_LOCATION)
+
+puts 'Sync local mruby repository'
+if Dir.entries(SRC_LOCATION).size <= 2
+  puts '  => checkout fresh copy'
+  `git clone #{MRUBY_REPO} #{SRC_LOCATION}`
+else
+  puts '  => update existing copy'
+  `git -C #{SRC_LOCATION} fetch`
+end
+
+# choose what to build
+puts '  => switch to master'
+`git -C #{SRC_LOCATION} checkout master`
+
+puts 'Build mruby'
+result = ''
+errors = ''
+Open3.popen3("make -C #{SRC_LOCATION}") do |sin,sout,serr|
+  result = sout.read
+  errors = serr.read
+end
+if errors == ''
+  puts '  => success'
+else
+  puts '  => failed'
+  puts errors.inspect
+end
+
+puts 'Test mruby'
+result = ''
+errors = ''
+Open3.popen3("make -C #{SRC_LOCATION} test") do |sin,sout,serr|
+  result = sout.read
+  errors = serr.read
+end
+if errors == ''
+  puts '  => success'
+else
+  puts '  => failed'
+end
